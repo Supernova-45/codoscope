@@ -8,3 +8,4 @@ einops==0.8.2
 biopython==1.87
 jsonschema==4.26.0
 huggingface-hub==0.36.2
+httpx2==2.6.0
