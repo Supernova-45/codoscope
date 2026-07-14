@@ -1,0 +1,32 @@
+metric,group,condition,value
+synonym_argmax_acc,E. coli,DeCodon_context,0.951
+synonym_argmax_acc,E. coli,frequency_prior,0.4893
+synonym_crossentropy_nats,E. coli,DeCodon_context,0.133
+synonym_crossentropy_nats,E. coli,frequency_prior,1.0963
+synonym_argmax_acc,B. subtilis,DeCodon_context,0.4803
+synonym_argmax_acc,B. subtilis,frequency_prior,0.453
+synonym_crossentropy_nats,B. subtilis,DeCodon_context,1.0958
+synonym_crossentropy_nats,B. subtilis,frequency_prior,1.1047
+synonym_argmax_acc,P. aeruginosa,DeCodon_context,0.8227
+synonym_argmax_acc,P. aeruginosa,frequency_prior,0.6913
+synonym_crossentropy_nats,P. aeruginosa,DeCodon_context,0.4603
+synonym_crossentropy_nats,P. aeruginosa,frequency_prior,0.7806
+transport_lens_synonym_acc,layer0,DeCodon,0.4722
+transport_lens_synonym_acc,layer1,DeCodon,0.3326
+transport_lens_synonym_acc,layer2,DeCodon,0.3549
+transport_lens_synonym_acc,layer3,DeCodon,0.3368
+transport_lens_synonym_acc,layer4,DeCodon,0.3507
+transport_lens_synonym_acc,layer5,DeCodon,0.3132
+transport_lens_synonym_acc,layer6,DeCodon,0.3396
+transport_lens_synonym_acc,layer7,DeCodon,0.3417
+transport_lens_synonym_acc,layer8,DeCodon,0.3424
+transport_lens_synonym_acc,layer9,DeCodon,0.3229
+transport_lens_synonym_acc,layer10,DeCodon,0.3479
+transport_lens_synonym_acc,layer11,DeCodon,0.3368
+transport_lens_synonym_acc,layer12,DeCodon,0.7382
+POOLED_summary,all,DeCodon_syn_acc,0.7513
+POOLED_summary,all,DeCodon_freq_prior,0.5446
+POOLED_summary,all,EnCodon_syn_acc,0.459
+POOLED_summary,all,EnCodon_freq_prior,0.469
+POOLED_CE_gain_nats,all,DeCodon,0.4308
+POOLED_CE_gain_nats,all,EnCodon,-0.1024

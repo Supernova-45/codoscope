@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Model weights (too large for git)
+decodon_model/
+decodon200m_model.tar.gz
+
+# IDE / OS
+.DS_Store
+.vscode/
+*.local
+
+# Env
+.env
+.env.*
+
+# Build artifacts
+*.tsbuildinfo

@@ -1,0 +1,39 @@
+metric,group,condition,value
+behavioral_argmax_acc,E. coli,CodonFM_context,0.5217
+behavioral_argmax_acc,E. coli,frequency_prior,0.4803
+behavioral_argmax_acc,B. subtilis,CodonFM_context,0.4343
+behavioral_argmax_acc,B. subtilis,frequency_prior,0.4593
+behavioral_argmax_acc,S. cerevisiae,CodonFM_context,0.4203
+behavioral_argmax_acc,S. cerevisiae,frequency_prior,0.467
+synonym_crossentropy_nats,E. coli,CodonFM_context,1.1197
+synonym_crossentropy_nats,E. coli,frequency_prior,1.1205
+synonym_crossentropy_nats,B. subtilis,CodonFM_context,1.2459
+synonym_crossentropy_nats,B. subtilis,frequency_prior,1.0999
+synonym_crossentropy_nats,S. cerevisiae,CodonFM_context,1.2618
+synonym_crossentropy_nats,S. cerevisiae,frequency_prior,1.0998
+synonym_probe_acc,layer1,unmasked_echo,1.0
+synonym_probe_acc,layer1,masked_context,0.3935
+synonym_probe_acc,layer2,unmasked_echo,1.0
+synonym_probe_acc,layer2,masked_context,0.4048
+synonym_probe_acc,layer3,unmasked_echo,1.0
+synonym_probe_acc,layer3,masked_context,0.406
+synonym_probe_acc,layer4,unmasked_echo,0.9984
+synonym_probe_acc,layer4,masked_context,0.4079
+synonym_probe_acc,layer5,unmasked_echo,0.9978
+synonym_probe_acc,layer5,masked_context,0.4067
+synonym_probe_acc,layer6,unmasked_echo,0.9952
+synonym_probe_acc,layer6,masked_context,0.4126
+synonym_probe_acc,all,frequency_baseline,0.4244
+aa_probe_acc,layer1,unmasked_echo,1.0
+aa_probe_acc,layer1,masked_context,0.0691
+aa_probe_acc,layer2,unmasked_echo,1.0
+aa_probe_acc,layer2,masked_context,0.0741
+aa_probe_acc,layer3,unmasked_echo,1.0
+aa_probe_acc,layer3,masked_context,0.0733
+aa_probe_acc,layer4,unmasked_echo,1.0
+aa_probe_acc,layer4,masked_context,0.0712
+aa_probe_acc,layer5,unmasked_echo,0.998
+aa_probe_acc,layer5,masked_context,0.0709
+aa_probe_acc,layer6,unmasked_echo,0.994
+aa_probe_acc,layer6,masked_context,0.0743
+aa_probe_acc,all,majority_baseline,0.106

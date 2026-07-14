@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BioJ-Space DeCodon atlas document",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "model",
+    "sequence_id",
+    "organisms",
+    "tokens",
+    "per_organism"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^biojspace/"
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "name",
+        "n_layers",
+        "hidden_size"
+      ]
+    },
+    "sequence_id": {
+      "type": "string"
+    },
+    "organism_default": {
+      "type": "string"
+    },
+    "organisms": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "pos",
+          "codon",
+          "aa"
+        ],
+        "properties": {
+          "pos": {
+            "type": "integer"
+          },
+          "codon": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "aa": {
+            "type": "string"
+          },
+          "aa3": {
+            "type": "string"
+          },
+          "frame": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "per_organism": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "pos",
+            "aa_readout",
+            "synonym_readout"
+          ],
+          "properties": {
+            "pos": {
+              "type": "integer"
+            },
+            "aa_readout": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/readout"
+              }
+            },
+            "synonym_readout": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/readout"
+              }
+            },
+            "aa_confidence": {
+              "type": "number"
+            },
+            "synonym_entropy": {
+              "type": "number"
+            },
+            "true_codon": {
+              "type": "string"
+            },
+            "true_aa": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "concept_layers": {
+      "type": "object"
+    }
+  },
+  "definitions": {
+    "readout": {
+      "type": "object",
+      "required": [
+        "label",
+        "kind"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "aa_mean",
+            "codon",
+            "derived",
+            "sae",
+            "phenotype"
+          ]
+        },
+        "score": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}
