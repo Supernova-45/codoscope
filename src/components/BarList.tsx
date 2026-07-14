@@ -4,25 +4,42 @@ import { READOUT_COLORS } from '../utils/colors';
 interface BarListProps {
   title: string;
   entries: ReadoutEntry[];
-  animateKey?: string;
   highlightLabel?: string;
 }
 
-export function BarList({ title, entries, animateKey, highlightLabel }: BarListProps) {
-  const maxScore = Math.max(...entries.map((e) => e.score), 0.01);
+export function BarList({ title, entries, highlightLabel }: BarListProps) {
+  const stableEntries = [...entries].sort((a, b) => a.label.localeCompare(b.label));
+  const rowHeight = 31;
 
   return (
-    <div className="bar-list" key={animateKey}>
+    <div className="bar-list">
       <h4>{title}</h4>
-      <ul>
-        {entries.map((entry) => {
-          const width = (entry.score / maxScore) * 100;
+      <ul style={{ height: `${entries.length * rowHeight}px` }}>
+        {stableEntries.map((entry) => {
+          const width = Math.max(0, Math.min(1, entry.score)) * 100;
           const color = READOUT_COLORS[entry.kind] ?? '#888';
           const highlighted = highlightLabel === entry.label;
+          const rank = entries.findIndex((candidate) => (
+            candidate.kind === entry.kind && candidate.label === entry.label
+          ));
           return (
-            <li key={`${entry.kind}-${entry.label}`} className={highlighted ? 'highlighted' : ''}>
-              <span className="bar-label" style={{ color }}>{entry.label}</span>
-              <div className="bar-track">
+            <li
+              key={`${entry.kind}-${entry.label}`}
+              className={highlighted ? 'highlighted' : ''}
+              style={{ transform: `translateY(${rank * rowHeight}px)` }}
+            >
+              <span className="bar-label" style={{ color }}>
+                {entry.label}
+                {highlighted && <span className="input-marker" title="Observed input">●</span>}
+              </span>
+              <div
+                className="bar-track"
+                role="meter"
+                aria-label={`${entry.label} probability`}
+                aria-valuemin={0}
+                aria-valuemax={1}
+                aria-valuenow={entry.score}
+              >
                 <div
                   className="bar-fill"
                   style={{
@@ -49,7 +66,14 @@ export function EntropyGauge({ value, label }: EntropyGaugeProps) {
   return (
     <div className="entropy-gauge">
       <span className="gauge-label">{label}</span>
-      <div className="gauge-track">
+      <div
+        className="gauge-track"
+        role="meter"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={1}
+        aria-valuenow={value}
+      >
         <div className="gauge-fill" style={{ width: `${value * 100}%` }} />
       </div>
       <span className="gauge-value">{value.toFixed(2)}</span>

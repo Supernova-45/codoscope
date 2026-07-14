@@ -6,3 +6,5 @@ torch>=2.0.0
 transformers>=4.40.0
 einops>=0.8.0
 biopython>=1.84
+jsonschema>=4.23.0
+huggingface-hub>=0.30.0

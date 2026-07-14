@@ -31,7 +31,10 @@ and de-chunk (8-byte header [ver(1),clen(3LE),scheme(1),ulen(3LE)]; scheme
 0=raw, 1=lz4-frame, 2=BG4 = lz4 then un-shuffle 4 byte-planes). On a normal
 network, `huggingface_hub.snapshot_download` just works — try that first.
 """
-import sys, json, math
+import json
+import math
+import sys
+
 import numpy as np
 import torch
 from transformers import AutoConfig, AutoModelForCausalLM
@@ -54,7 +57,8 @@ def load_decodon(model_dir, device="cpu"):
     dmod = [m for n, m in sys.modules.items() if n.endswith("modeling_decodon")][0]
     dmod.einsum = smart_einsum
 
-    vocab = json.load(open(f"{model_dir}/vocab.json"))
+    with open(f"{model_dir}/vocab.json", encoding="utf-8") as vocab_file:
+        vocab = json.load(vocab_file)
     assert not any(torch.isnan(p).any() for p in model.parameters()), "NaN weights — bad download"
     return model, vocab
 
@@ -71,7 +75,9 @@ def run_sequence(model, vocab, code, codon_list, taxid, layers=None):
     CLS, SEP = vocab["<CLS>"], vocab["<SEP>"]
     ttok = vocab["<%d>" % taxid]
     ids = [CLS, ttok] + [vocab[c] for c in codon_list] + [SEP]
-    out = model(input_ids=torch.tensor([ids]), output_hidden_states=(layers is not None))
+    device = next(model.parameters()).device
+    input_ids = torch.tensor([ids], dtype=torch.long, device=device)
+    out = model(input_ids=input_ids, output_hidden_states=(layers is not None))
     return out.logits[0], (out.hidden_states if layers is not None else None)
 
 def build_document(model, vocab, code, sequence_id, codon_list, organisms):
@@ -96,7 +102,7 @@ def build_document(model, vocab, code, sequence_id, codon_list, organisms):
         logits, _ = run_sequence(model, vocab, code, codon_list, taxid)
         per_pos = []
         for p, c in enumerate(codon_list):
-            l64 = logits[1 + p, vcols].float().numpy()      # gotcha #3: logits at 1+p predict codon p
+            l64 = logits[1 + p, vcols].detach().float().cpu().numpy()  # gotcha #3
             prob = softmax(l64)
             aa_mass = {}
             for j, cc in enumerate(codons):
@@ -105,8 +111,12 @@ def build_document(model, vocab, code, sequence_id, codon_list, organisms):
             fp = {cc: prob[col[cc]] for cc in fam}
             s = sum(fp.values()) + 1e-12; fp = {k: v / s for k, v in fp.items()}
             ent = -sum(v * math.log(v + 1e-12) for v in fp.values()) / math.log(max(len(fp), 2))
+            predicted_aa = max(aa_mass, key=aa_mass.get)
             per_pos.append({
-                "pos": p, "true_codon": c, "true_aa": aa3.get(code[c], code[c]),
+                "pos": p,
+                "predicted_aa": aa3.get(predicted_aa, predicted_aa),
+                "true_codon": c,
+                "true_aa": aa3.get(code[c], code[c]),
                 "aa_readout": [{"label": aa3.get(a, a), "kind": "aa_mean", "score": round(float(m), 4)}
                                for a, m in sorted(aa_mass.items(), key=lambda x: -x[1])[:5]],
                 "synonym_readout": [{"label": cc, "kind": "codon", "score": round(float(v), 4)}

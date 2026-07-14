@@ -1,37 +1,61 @@
 import type { AtlasDocument, AtlasRequest, OrganismInfo } from '../types/atlas';
+import { validateAtlasDocument } from './atlas';
 
-const API_URL = import.meta.env.VITE_API_URL ?? '';
+const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
+const REQUEST_TIMEOUT_MS = 60_000;
+
+async function fetchJson(url: string, init?: RequestInit): Promise<unknown> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null) as { detail?: string } | null;
+      throw new Error(body?.detail ?? `Request failed (${response.status})`);
+    }
+    return await response.json();
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('The request timed out. Try a shorter sequence.');
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
 
 export async function fetchFixture(): Promise<AtlasDocument> {
-  const res = await fetch(`${import.meta.env.BASE_URL}data/atlas_fixture.json`);
-  if (!res.ok) throw new Error(`Failed to load fixture: ${res.status}`);
-  return res.json();
+  const value = await fetchJson(`${import.meta.env.BASE_URL}data/atlas_fixture.json`);
+  validateAtlasDocument(value);
+  return value;
 }
 
 export async function fetchAtlas(request: AtlasRequest): Promise<AtlasDocument> {
   if (!API_URL) throw new Error('Live inference not configured (VITE_API_URL unset)');
-  const res = await fetch(`${API_URL}/api/atlas`, {
+  const value = await fetchJson(`${API_URL}/api/atlas`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail ?? 'Inference failed');
-  }
-  return res.json();
+  validateAtlasDocument(value);
+  return value;
 }
 
-export async function fetchOrganisms(): Promise<OrganismInfo[]> {
+export async function fetchOrganisms(query = ''): Promise<OrganismInfo[]> {
   if (!API_URL) return [];
-  const res = await fetch(`${API_URL}/api/organisms`);
-  if (!res.ok) throw new Error('Failed to load organisms');
-  return res.json();
-}
-
-export function validateSchema(doc: AtlasDocument): void {
-  const major = doc.schema_version.split('/')[1]?.split('-')[1]?.split('.')[0];
-  if (major !== '1') {
-    throw new Error(`Unsupported schema version: ${doc.schema_version}`);
+  const params = new URLSearchParams({ limit: '100' });
+  if (query.trim()) params.set('query', query.trim());
+  const value = await fetchJson(`${API_URL}/api/organisms?${params}`);
+  if (
+    !Array.isArray(value)
+    || !value.every((item) => (
+      typeof item === 'object'
+      && item !== null
+      && typeof (item as OrganismInfo).taxid === 'number'
+      && typeof (item as OrganismInfo).name === 'string'
+    ))
+  ) {
+    throw new Error('The organism list has an invalid format');
   }
+  return value as OrganismInfo[];
 }

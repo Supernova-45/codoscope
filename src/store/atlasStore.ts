@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { AtlasDocument } from '../types/atlas';
-import { fetchAtlas, fetchFixture, validateSchema } from '../utils/api';
+import { fetchAtlas, fetchFixture } from '../utils/api';
+import { chooseStoryPosition } from '../utils/atlas';
 
 interface AtlasState {
   document: AtlasDocument | null;
@@ -21,9 +22,23 @@ interface AtlasState {
   setHoveredLayer: (layer: number | null) => void;
   setCompareMode: (on: boolean) => void;
   setLiveMode: (on: boolean) => void;
+  clearError: () => void;
 }
 
-export const useAtlasStore = create<AtlasState>((set) => ({
+function initialOrganisms(document: AtlasDocument) {
+  const selected = (
+    document.organism_default
+    && document.organisms.includes(document.organism_default)
+  )
+    ? document.organism_default
+    : document.organisms[0];
+  return {
+    selected,
+    compared: document.organisms.find((organism) => organism !== selected) ?? null,
+  };
+}
+
+export const useAtlasStore = create<AtlasState>((set, get) => ({
   document: null,
   loading: false,
   error: null,
@@ -31,19 +46,20 @@ export const useAtlasStore = create<AtlasState>((set) => ({
   compareOrganism: null,
   selectedPosition: null,
   hoveredLayer: null,
-  compareMode: false,
+  compareMode: true,
   liveMode: false,
 
   loadFixture: async () => {
     set({ loading: true, error: null });
     try {
       const doc = await fetchFixture();
-      validateSchema(doc);
+      const { selected, compared } = initialOrganisms(doc);
       set({
         document: doc,
-        selectedOrganism: doc.organism_default ?? doc.organisms[0],
-        compareOrganism: doc.organisms[1] ?? null,
-        selectedPosition: 1,
+        selectedOrganism: selected,
+        compareOrganism: compared,
+        selectedPosition: chooseStoryPosition(doc),
+        compareMode: Boolean(compared),
         loading: false,
         liveMode: false,
       });
@@ -56,12 +72,13 @@ export const useAtlasStore = create<AtlasState>((set) => ({
     set({ loading: true, error: null });
     try {
       const doc = await fetchAtlas({ sequence, organisms });
-      validateSchema(doc);
+      const { selected, compared } = initialOrganisms(doc);
       set({
         document: doc,
-        selectedOrganism: doc.organism_default ?? doc.organisms[0],
-        compareOrganism: doc.organisms[1] ?? null,
-        selectedPosition: 1,
+        selectedOrganism: selected,
+        compareOrganism: compared,
+        selectedPosition: chooseStoryPosition(doc),
+        compareMode: Boolean(compared),
         loading: false,
         liveMode: true,
       });
@@ -70,12 +87,31 @@ export const useAtlasStore = create<AtlasState>((set) => ({
     }
   },
 
-  setOrganism: (org) => set({ selectedOrganism: org }),
-  setCompareOrganism: (org) => set({ compareOrganism: org }),
+  setOrganism: (org) => {
+    const { document, compareOrganism } = get();
+    if (!document?.organisms.includes(org)) return;
+    const nextCompare = compareOrganism === org
+      ? document.organisms.find((candidate) => candidate !== org) ?? null
+      : compareOrganism;
+    set({ selectedOrganism: org, compareOrganism: nextCompare });
+  },
+  setCompareOrganism: (org) => {
+    const { document, selectedOrganism } = get();
+    if (org && (!document?.organisms.includes(org) || org === selectedOrganism)) return;
+    set({ compareOrganism: org });
+  },
   setPosition: (pos) => set({ selectedPosition: pos }),
   setHoveredLayer: (layer) => set({ hoveredLayer: layer }),
-  setCompareMode: (on) => set({ compareMode: on }),
+  setCompareMode: (on) => {
+    const { document, selectedOrganism, compareOrganism } = get();
+    const fallback = document?.organisms.find((organism) => organism !== selectedOrganism) ?? null;
+    set({
+      compareMode: on && Boolean(compareOrganism ?? fallback),
+      compareOrganism: compareOrganism ?? fallback,
+    });
+  },
   setLiveMode: (on) => set({ liveMode: on }),
+  clearError: () => set({ error: null }),
 }));
 
 export function getTopSynonym(doc: AtlasDocument, org: string, pos: number): string | null {

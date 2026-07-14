@@ -1,9 +1,14 @@
 # Dependencies
 node_modules/
 dist/
+coverage/
+playwright-report/
+test-results/
+.playwright/
 
 # Python
 __pycache__/
+.pycache/
 *.py[cod]
 .venv/
 venv/
@@ -21,6 +26,9 @@ decodon200m_model.tar.gz
 # Env
 .env
 .env.*
+
+# Local model/taxonomy caches
+taxonomy_cache.json
 
 # Build artifacts
 *.tsbuildinfo

@@ -13,7 +13,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "pattern": "^biojspace/"
+      "pattern": "^biojspace/[^/]+-[0-9]+\\.[0-9]+$"
     },
     "model": {
       "type": "object",
@@ -21,7 +21,27 @@
         "name",
         "n_layers",
         "hidden_size"
-      ]
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repo": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "n_layers": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "hidden_size": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
     },
     "sequence_id": {
       "type": "string"
@@ -34,7 +54,8 @@
       "items": {
         "type": "string"
       },
-      "minItems": 1
+      "minItems": 1,
+      "uniqueItems": true
     },
     "tokens": {
       "type": "array",
@@ -51,8 +72,7 @@
           },
           "codon": {
             "type": "string",
-            "minLength": 3,
-            "maxLength": 3
+            "pattern": "^[ACGT]{3}$"
           },
           "aa": {
             "type": "string"
@@ -64,7 +84,8 @@
             "type": "integer"
           }
         }
-      }
+      },
+      "minItems": 1
     },
     "per_organism": {
       "type": "object",
@@ -94,10 +115,14 @@
               }
             },
             "aa_confidence": {
-              "type": "number"
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
             },
             "synonym_entropy": {
-              "type": "number"
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
             },
             "true_codon": {
               "type": "string"
@@ -110,7 +135,50 @@
       }
     },
     "concept_layers": {
-      "type": "object"
+      "type": "object",
+      "required": [
+        "layers",
+        "concepts"
+      ],
+      "properties": {
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 1
+        },
+        "concepts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "kind",
+              "baseline",
+              "scores"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "clf",
+                  "reg"
+                ]
+              },
+              "baseline": {
+                "type": "number"
+              },
+              "scores": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 1
+              }
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -118,7 +186,8 @@
       "type": "object",
       "required": [
         "label",
-        "kind"
+        "kind",
+        "score"
       ],
       "properties": {
         "label": {
@@ -134,7 +203,9 @@
           ]
         },
         "score": {
-          "type": "number"
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         }
       }
     }

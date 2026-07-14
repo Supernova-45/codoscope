@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: codoscope-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: standard
+    healthCheckPath: /api/health
+    envVars:
+      - key: CORS_ORIGINS
+        value: https://supernova-45.github.io
+      - key: DECODON_MODEL_DIR
+        value: /models/decodon
+      - key: PRELOAD_MODEL
+        value: "1"
+      - key: DOWNLOAD_MODEL
+        value: "1"
+    disk:
+      name: decodon-model
+      mountPath: /models
+      sizeGB: 2

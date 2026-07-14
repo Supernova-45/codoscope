@@ -25,6 +25,7 @@ export function ReadoutPanel() {
   if (!token || !readout) return null;
 
   const hasSynonyms = token.aa !== 'M' && token.aa !== 'W';
+  const hasSequenceContext = selectedPosition > 0;
 
   return (
     <section className="panel readout-panel">
@@ -40,7 +41,6 @@ export function ReadoutPanel() {
           <BarList
             title="Amino acid (what protein)"
             entries={readout.aa_readout}
-            animateKey={`aa-${selectedOrganism}-${selectedPosition}`}
             highlightLabel={readout.true_aa}
           />
           <div className="confidence-chip">
@@ -49,23 +49,40 @@ export function ReadoutPanel() {
           </div>
         </div>
 
-        {hasSynonyms ? (
+        {!hasSequenceContext ? (
+          <div className="readout-section synonym-section trivial">
+            <p className="trivial-note">
+              Position 0 has no upstream codon context. DeCodon predicts it from
+              the organism token alone, so Codoscope excludes it from the
+              synonymous analysis.
+            </p>
+          </div>
+        ) : hasSynonyms ? (
           <div className={`readout-section synonym-section ${compareMode ? 'compare' : ''}`}>
             <BarList
               title={`Synonymous codon (${selectedOrganism})`}
               entries={readout.synonym_readout}
-              animateKey={`syn-${selectedOrganism}-${selectedPosition}`}
               highlightLabel={readout.true_codon}
             />
             {compareReadout && (
               <BarList
                 title={`Synonymous codon (${compareOrganism})`}
                 entries={compareReadout.synonym_readout}
-                animateKey={`syn-${compareOrganism}-${selectedPosition}`}
                 highlightLabel={compareReadout.true_codon}
               />
             )}
-            <EntropyGauge value={readout.synonym_entropy} label="Synonym entropy" />
+            <div className="entropy-stack">
+              <EntropyGauge
+                value={readout.synonym_entropy}
+                label={`Entropy · ${selectedOrganism.split(' (')[0]}`}
+              />
+              {compareReadout && compareOrganism && (
+                <EntropyGauge
+                  value={compareReadout.synonym_entropy}
+                  label={`Entropy · ${compareOrganism.split(' (')[0]}`}
+                />
+              )}
+            </div>
           </div>
         ) : (
           <div className="readout-section synonym-section trivial">
