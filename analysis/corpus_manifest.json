@@ -1,0 +1,37 @@
+{
+  "schema_version": "codoscope/lens-corpus-1.0",
+  "generated_at": "2026-07-14T17:37:22.755522+00:00",
+  "seed": 20260713,
+  "count": 120,
+  "filters": {
+    "translation_table": 1,
+    "start_codon": "ATG",
+    "alphabet": "ACGT",
+    "internal_stops": false,
+    "min_codons": 24,
+    "max_codons": 126
+  },
+  "sources": [
+    {
+      "taxid": 562,
+      "organism": "Escherichia coli K-12 MG1655",
+      "accession": "NC_000913.3"
+    },
+    {
+      "taxid": 1423,
+      "organism": "Bacillus subtilis 168",
+      "accession": "NC_000964.3"
+    },
+    {
+      "taxid": 287,
+      "organism": "Pseudomonas aeruginosa PAO1",
+      "accession": "NC_002516.2"
+    }
+  ],
+  "selected_per_accession": {
+    "NC_000913.3": 40,
+    "NC_000964.3": 40,
+    "NC_002516.2": 40
+  },
+  "fitting_note": "Input positions 0\u20132 (CLS, taxid, first codon) are excluded."
+}

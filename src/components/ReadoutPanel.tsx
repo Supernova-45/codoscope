@@ -1,5 +1,7 @@
 import { useAtlasStore } from '../store/atlasStore';
 import { BarList, EntropyGauge } from './BarList';
+import { MethodBadge } from './MethodBadge';
+import { SynonymComparison } from './SynonymComparison';
 
 export function ReadoutPanel() {
   const document = useAtlasStore((s) => s.document);
@@ -28,25 +30,48 @@ export function ReadoutPanel() {
   const hasSequenceContext = selectedPosition > 0;
 
   return (
-    <section className="panel readout-panel">
+    <section className="panel readout-panel" id="position-inspector">
       <div className="panel-header">
-        <h2>Position {selectedPosition} readout</h2>
-        <span className="panel-meta">
-          {token.aa3} · {token.codon} · true input
-        </span>
+        <div>
+          <span className="panel-step">02 · inspect a codon</span>
+          <h2>Codon {selectedPosition + 1} readout</h2>
+          <span className="panel-meta">
+            model index {selectedPosition} · {token.codon} · observed input
+          </span>
+        </div>
+        <MethodBadge method="output" />
+      </div>
+
+      <div className="encoded-invariant">
+        <div>
+          <span>Encoded residue stays fixed</span>
+          <strong>{token.aa3}</strong>
+          <code>{token.codon}</code>
+        </div>
+        <p>
+          The DNA input fixes this amino acid. The probability bars below show
+          whether DeCodon also expects it under each organism token; those bars
+          are allowed to change.
+        </p>
       </div>
 
       <div className="readout-grid">
         <div className="readout-section aa-section">
           <BarList
-            title="Amino acid (what protein)"
+            title="Predicted residue identity"
             entries={readout.aa_readout}
             highlightLabel={readout.true_aa}
           />
           <div className="confidence-chip">
-            <span>AA confidence</span>
+            <span>Observed {token.aa3} probability</span>
             <strong>{(readout.aa_confidence * 100).toFixed(1)}%</strong>
           </div>
+          {compareReadout && compareOrganism && (
+            <div className="confidence-chip comparison-confidence">
+              <span>{compareOrganism.split(' (')[0]}</span>
+              <strong>{(compareReadout.aa_confidence * 100).toFixed(1)}%</strong>
+            </div>
+          )}
         </div>
 
         {!hasSequenceContext ? (
@@ -59,27 +84,30 @@ export function ReadoutPanel() {
           </div>
         ) : hasSynonyms ? (
           <div className={`readout-section synonym-section ${compareMode ? 'compare' : ''}`}>
-            <BarList
-              title={`Synonymous codon (${selectedOrganism})`}
-              entries={readout.synonym_readout}
-              highlightLabel={readout.true_codon}
-            />
-            {compareReadout && (
+            {compareReadout && compareOrganism ? (
+              <SynonymComparison
+                primaryLabel={selectedOrganism}
+                comparisonLabel={compareOrganism}
+                primary={readout}
+                comparison={compareReadout}
+                trueCodon={readout.true_codon}
+              />
+            ) : (
               <BarList
-                title={`Synonymous codon (${compareOrganism})`}
-                entries={compareReadout.synonym_readout}
-                highlightLabel={compareReadout.true_codon}
+                title={`Synonymous codon (${selectedOrganism})`}
+                entries={readout.synonym_readout}
+                highlightLabel={readout.true_codon}
               />
             )}
             <div className="entropy-stack">
               <EntropyGauge
                 value={readout.synonym_entropy}
-                label={`Entropy · ${selectedOrganism.split(' (')[0]}`}
+                label={`Normalized entropy · ${selectedOrganism.split(' (')[0]}`}
               />
               {compareReadout && compareOrganism && (
                 <EntropyGauge
                   value={compareReadout.synonym_entropy}
-                  label={`Entropy · ${compareOrganism.split(' (')[0]}`}
+                  label={`Normalized entropy · ${compareOrganism.split(' (')[0]}`}
                 />
               )}
             </div>

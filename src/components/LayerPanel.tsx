@@ -1,5 +1,6 @@
 import { useAtlasStore } from '../store/atlasStore';
 import { CONCEPT_COLORS, CONCEPT_LABELS } from '../utils/colors';
+import { MethodBadge } from './MethodBadge';
 
 const FEATURED_CONCEPTS = [
   'organism_taxid',
@@ -16,7 +17,9 @@ const Y_MAX = 1.05;
 
 export function LayerPanel() {
   const document = useAtlasStore((s) => s.document);
+  const selectedLayer = useAtlasStore((s) => s.selectedLayer);
   const hoveredLayer = useAtlasStore((s) => s.hoveredLayer);
+  const setSelectedLayer = useAtlasStore((s) => s.setSelectedLayer);
   const setHoveredLayer = useAtlasStore((s) => s.setHoveredLayer);
   const conceptLayers = document?.concept_layers;
 
@@ -38,29 +41,36 @@ export function LayerPanel() {
   const pathFor = (scores: number[]) => scores
     .map((score, index) => `${index === 0 ? 'M' : 'L'} ${x(layers[index] ?? index)} ${y(score)}`)
     .join(' ');
-  const hoveredIndex = hoveredLayer === null ? -1 : layers.indexOf(hoveredLayer);
+  const displayLayer = hoveredLayer ?? selectedLayer;
+  const displayIndex = displayLayer === null ? -1 : layers.indexOf(displayLayer);
   const yTicks = [-0.1, 0, 0.25, 0.5, 0.75, 1];
+  const earlyEnd = firstLayer + (lastLayer - firstLayer) * 0.29;
+  const middleEnd = firstLayer + (lastLayer - firstLayer) * 0.71;
 
-  const handlePointerMove = (event: React.PointerEvent<SVGRectElement>) => {
+  const layerFromPointer = (event: React.PointerEvent<SVGRectElement>) => {
     const bounds = event.currentTarget.ownerSVGElement?.getBoundingClientRect();
-    if (!bounds) return;
+    if (!bounds) return null;
     const pointerX = ((event.clientX - bounds.left) / bounds.width) * WIDTH;
     const approximate = firstLayer
       + ((pointerX - PLOT.left) / (PLOT.right - PLOT.left))
       * (lastLayer - firstLayer);
-    const nearest = layers.reduce((best, layer) => (
+    return layers.reduce((best, layer) => (
       Math.abs(layer - approximate) < Math.abs(best - approximate) ? layer : best
     ), layers[0] ?? 0);
-    setHoveredLayer(nearest);
   };
 
   return (
-    <section className="panel layer-panel">
+    <section className="panel layer-panel" id="layer-evidence">
       <div className="panel-header">
-        <h2>Layer axis — depth of concept</h2>
-        <p className="layer-caption">
-          Different biology resolves at different depths: organism at the bottom, position in the middle, amino acid at the top.
-        </p>
+        <div>
+          <span className="panel-step">03 · follow model depth</span>
+          <h2>Independent probe evidence</h2>
+          <p className="layer-caption">
+            Global benchmark — it does not change with the selected organism or
+            codon. Classifiers report accuracy; the position regressor reports R².
+          </p>
+        </div>
+        <MethodBadge method="probe" />
       </div>
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -75,12 +85,12 @@ export function LayerPanel() {
         </desc>
 
         <g className="layer-regimes" aria-hidden="true">
-          <rect x={x(0)} y={PLOT.top} width={x(3.5) - x(0)} height={PLOT.bottom - PLOT.top} />
-          <rect x={x(3.5)} y={PLOT.top} width={x(8.5) - x(3.5)} height={PLOT.bottom - PLOT.top} />
-          <rect x={x(8.5)} y={PLOT.top} width={x(12) - x(8.5)} height={PLOT.bottom - PLOT.top} />
-          <text x={(x(0) + x(3.5)) / 2} y={27}>organism available</text>
-          <text x={(x(3.5) + x(8.5)) / 2} y={27}>position builds</text>
-          <text x={(x(8.5) + x(12)) / 2} y={27}>amino acid resolves</text>
+          <rect x={x(firstLayer)} y={PLOT.top} width={x(earlyEnd) - x(firstLayer)} height={PLOT.bottom - PLOT.top} />
+          <rect x={x(earlyEnd)} y={PLOT.top} width={x(middleEnd) - x(earlyEnd)} height={PLOT.bottom - PLOT.top} />
+          <rect x={x(middleEnd)} y={PLOT.top} width={x(lastLayer) - x(middleEnd)} height={PLOT.bottom - PLOT.top} />
+          <text x={(x(firstLayer) + x(earlyEnd)) / 2} y={27}>organism available</text>
+          <text x={(x(earlyEnd) + x(middleEnd)) / 2} y={27}>position builds</text>
+          <text x={(x(middleEnd) + x(lastLayer)) / 2} y={27}>amino acid resolves</text>
         </g>
 
         {yTicks.map((tick) => (
@@ -101,7 +111,7 @@ export function LayerPanel() {
           className="axis-label"
           transform={`translate(14 ${(PLOT.top + PLOT.bottom) / 2}) rotate(-90)`}
         >
-          probe score
+          accuracy / R²
         </text>
 
         {FEATURED_CONCEPTS.map((key) => {
@@ -123,10 +133,10 @@ export function LayerPanel() {
                 d={pathFor(concept.scores)}
                 stroke={color}
               />
-              {hoveredIndex >= 0 && concept.scores[hoveredIndex] !== undefined && (
+              {displayIndex >= 0 && concept.scores[displayIndex] !== undefined && (
                 <circle
-                  cx={x(hoveredLayer ?? 0)}
-                  cy={y(concept.scores[hoveredIndex])}
+                  cx={x(displayLayer ?? 0)}
+                  cy={y(concept.scores[displayIndex])}
                   r={4}
                   fill={color}
                 />
@@ -135,11 +145,11 @@ export function LayerPanel() {
           );
         })}
 
-        {hoveredLayer !== null && (
+        {displayLayer !== null && (
           <line
             className="hover-line"
-            x1={x(hoveredLayer)}
-            x2={x(hoveredLayer)}
+            x1={x(displayLayer)}
+            x2={x(displayLayer)}
             y1={PLOT.top}
             y2={PLOT.bottom}
           />
@@ -150,19 +160,33 @@ export function LayerPanel() {
           y={PLOT.top}
           width={PLOT.right - PLOT.left}
           height={PLOT.bottom - PLOT.top}
-          onPointerMove={handlePointerMove}
+          onPointerMove={(event) => setHoveredLayer(layerFromPointer(event))}
+          onPointerDown={(event) => setSelectedLayer(layerFromPointer(event))}
           onPointerLeave={() => setHoveredLayer(null)}
         />
       </svg>
-      {hoveredLayer !== null && (
+      <div className="layer-buttons" aria-label="Select model layer">
+        {layers.map((layer) => (
+          <button
+            key={layer}
+            type="button"
+            className={layer === selectedLayer ? 'active' : ''}
+            onClick={() => setSelectedLayer(layer)}
+            aria-pressed={layer === selectedLayer}
+          >
+            L{layer}
+          </button>
+        ))}
+      </div>
+      {displayLayer !== null && (
         <div className="layer-tooltip" aria-live="polite">
-          Layer {hoveredLayer}
+          Layer {displayLayer}
           {FEATURED_CONCEPTS.map((key) => {
             const c = conceptLayers.concepts[key];
             if (!c) return null;
             return (
               <span key={key} style={{ color: CONCEPT_COLORS[key] }}>
-                {CONCEPT_LABELS[key]}: {c.scores[hoveredIndex]?.toFixed(3)}
+                {CONCEPT_LABELS[key]}: {c.scores[displayIndex]?.toFixed(3)}
               </span>
             );
           })}
@@ -173,6 +197,8 @@ export function LayerPanel() {
           <span key={key} className="legend-item">
             <i style={{ background: CONCEPT_COLORS[key] }} />
             {CONCEPT_LABELS[key]}
+            {' '}
+            ({conceptLayers.concepts[key]?.kind === 'reg' ? 'R²' : 'accuracy'})
           </span>
         ))}
         <span className="baseline-key">dotted lines = baselines</span>

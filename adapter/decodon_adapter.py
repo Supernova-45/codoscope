@@ -34,6 +34,15 @@ network, `huggingface_hub.snapshot_download` just works — try that first.
 import json
 import math
 import sys
+from pathlib import Path
+
+# The public DeCodon modeling file imports xformers unconditionally even when
+# flash attention is disabled. Make the fail-fast CPU shim discoverable before
+# Transformers checks remote-code imports. A real xformers installation earlier
+# on sys.path still wins.
+SHIMS = Path(__file__).resolve().parent / "shims"
+if str(SHIMS) not in sys.path:
+    sys.path.append(str(SHIMS))
 
 import numpy as np
 import torch
@@ -46,7 +55,11 @@ def load_decodon(model_dir, device="cpu"):
     cfg.use_flash_attn = False                      # gotcha #1
     model = AutoModelForCausalLM.from_pretrained(
         model_dir, config=cfg, trust_remote_code=True).to(device).eval()
-    torch.set_grad_enabled(False)
+    # Freeze model weights without globally disabling autograd. Ordinary
+    # inference uses ``torch.inference_mode`` below; the Jacobian-lens pipeline
+    # still needs gradients with respect to intermediate activations.
+    for parameter in model.parameters():
+        parameter.requires_grad_(False)
 
     # gotcha #2: patch the custom module's einsum dispatcher
     from einops import einsum as _eeinsum
@@ -69,7 +82,7 @@ def codon_columns(vocab, code):
 def softmax(x):
     e = np.exp(x - x.max()); return e / e.sum()
 
-@torch.no_grad()
+@torch.inference_mode()
 def run_sequence(model, vocab, code, codon_list, taxid, layers=None):
     """Return (logits[L+2, V], hidden_states tuple) for one CDS under one organism."""
     CLS, SEP = vocab["<CLS>"], vocab["<SEP>"]

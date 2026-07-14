@@ -1,5 +1,6 @@
 import { hasSynonymShift, useAtlasStore } from '../store/atlasStore';
 import { chooseStoryPosition } from '../utils/atlas';
+import { MethodBadge } from './MethodBadge';
 
 export function OrganismSwitch() {
   const document = useAtlasStore((s) => s.document);
@@ -27,14 +28,24 @@ export function OrganismSwitch() {
       : document.organisms,
   });
   const storyToken = document.tokens[storyPosition];
+  const primaryStory = document.per_organism[selectedOrganism]?.[storyPosition];
+  const comparisonStory = comparison
+    ? document.per_organism[comparison]?.[storyPosition]
+    : null;
+  const primaryTop = primaryStory?.synonym_readout[0];
+  const comparisonTop = comparisonStory?.synonym_readout[0];
 
   return (
-    <section className="panel organism-panel hero">
+    <section className="panel organism-panel hero" id="organism-story">
       <div className="panel-header">
-        <h2>Organism switch</h2>
-        <p className="hero-caption">
-          Hold the sequence fixed — switch organism and watch synonymous preferences move while the amino acid stays put.
-        </p>
+        <div>
+          <span className="panel-step">01 · change the organism</span>
+          <h2>Whose codon dialect?</h2>
+          <p className="hero-caption">
+            Hold the sequence fixed. Only the organism token changes.
+          </p>
+        </div>
+        <MethodBadge method="output" />
       </div>
 
       <div className="organism-controls">
@@ -87,9 +98,17 @@ export function OrganismSwitch() {
             className="shift-summary"
             onClick={() => setPosition(storyPosition)}
           >
-            <span><strong>{shiftCount}</strong> positions change their top synonymous codon</span>
             <span>
-              Jump to strongest shift: {storyToken.aa3} {storyToken.codon} at position {storyPosition} →
+              <strong>{shiftCount}</strong> codons change their top synonym
+            </span>
+            <span className="shift-narrative">
+              Codon {storyPosition + 1} encodes {storyToken.aa3}:{' '}
+              {primaryTop?.label} {(Number(primaryTop?.score ?? 0) * 100).toFixed(0)}%
+              {' → '}
+              {comparisonTop?.label} {(Number(comparisonTop?.score ?? 0) * 100).toFixed(0)}%.
+              Observed-{storyToken.aa3} support is{' '}
+              {(Number(primaryStory?.aa_confidence ?? 0) * 100).toFixed(0)}% vs{' '}
+              {(Number(comparisonStory?.aa_confidence ?? 0) * 100).toFixed(0)}%. →
             </span>
           </button>
         )}

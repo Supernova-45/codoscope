@@ -6,9 +6,11 @@
     "schema_version",
     "model",
     "sequence_id",
+    "organism_default",
     "organisms",
     "tokens",
-    "per_organism"
+    "per_organism",
+    "concept_layers"
   ],
   "properties": {
     "schema_version": {
@@ -64,7 +66,9 @@
         "required": [
           "pos",
           "codon",
-          "aa"
+          "aa",
+          "aa3",
+          "frame"
         ],
         "properties": {
           "pos": {
@@ -96,7 +100,11 @@
           "required": [
             "pos",
             "aa_readout",
-            "synonym_readout"
+            "synonym_readout",
+            "aa_confidence",
+            "synonym_entropy",
+            "true_codon",
+            "true_aa"
           ],
           "properties": {
             "pos": {
@@ -105,13 +113,35 @@
             "aa_readout": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/readout"
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/readout"
+                  },
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "aa_mean"
+                      }
+                    }
+                  }
+                ]
               }
             },
             "synonym_readout": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/readout"
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/readout"
+                  },
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "codon"
+                      }
+                    }
+                  }
+                ]
               }
             },
             "aa_confidence": {
@@ -128,6 +158,9 @@
               "type": "string"
             },
             "true_aa": {
+              "type": "string"
+            },
+            "predicted_aa": {
               "type": "string"
             }
           }
@@ -179,6 +212,9 @@
           }
         }
       }
+    },
+    "lens": {
+      "$ref": "#/definitions/lens"
     }
   },
   "definitions": {
@@ -206,6 +242,181 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1
+        }
+      }
+    },
+    "rankedReadout": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/readout"
+        },
+        {
+          "type": "object",
+          "required": [
+            "rank"
+          ],
+          "properties": {
+            "rank": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      ]
+    },
+    "lens": {
+      "type": "object",
+      "required": [
+        "method",
+        "status",
+        "layers",
+        "top_k",
+        "model_revision",
+        "score_units",
+        "normalization",
+        "source_position",
+        "target_positions",
+        "per_organism",
+        "rank_tracks"
+      ],
+      "properties": {
+        "method": {
+          "enum": [
+            "logit_lens",
+            "jacobian_lens"
+          ]
+        },
+        "status": {
+          "enum": [
+            "baseline",
+            "validated",
+            "development"
+          ]
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "top_k": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "model_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lens_revision": {
+          "type": "string"
+        },
+        "score_units": {
+          "const": "probability"
+        },
+        "normalization": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_position": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_positions": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fit": {
+          "type": "object",
+          "required": [
+            "corpus_manifest",
+            "n_sequences",
+            "skip_first"
+          ],
+          "properties": {
+            "corpus_manifest": {
+              "type": "string"
+            },
+            "n_sequences": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "skip_first": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "per_organism": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "pos",
+                "layers"
+              ],
+              "properties": {
+                "pos": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "layers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "layer",
+                      "pos",
+                      "aa_readout",
+                      "codon_readout"
+                    ],
+                    "properties": {
+                      "layer": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "pos": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "aa_readout": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/rankedReadout"
+                        }
+                      },
+                      "codon_readout": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/rankedReadout"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "rank_tracks": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
         }
       }
     }

@@ -1,23 +1,28 @@
 # Codoscope
 
-**Bio J-Space atlas** — an interactive website visualizing what [DeCodon-200M](https://huggingface.co/goodarzilab/decodon-200M) is poised to output across a coding sequence. It adapts the output-accessible perspective of [Anthropic's Jacobian lens](https://transformer-circuits.pub/2026/jacobian-lens/index.html) to a codon language model.
+**A biological J-space atlas** — an interactive website for reading what [DeCodon-200M](https://huggingface.co/goodarzilab/decodon-200M) is poised to output across a coding sequence. It combines final codon probabilities, global biological probes, a direct logit-lens baseline, and a fitted [Anthropic-style averaged Jacobian lens](https://transformer-circuits.pub/2026/workspace/index.html). Every view carries a method badge so those measurements are never conflated.
 
 **Live demo:** [https://supernova-45.github.io/codoscope/](https://supernova-45.github.io/codoscope/)
 
 ## The idea
 
-At every codon position, DeCodon's output decomposes into two legible parts:
+At every codon position, the final-output baseline separates two probabilities:
 
-- **Amino acid readout** — which protein is being written (high signal, coding-driven)
-- **Synonymous codon readout** — which codon within that amino acid (organism-specific dialect)
+- **Amino-acid marginal** — codon probability mass grouped by encoded amino acid
+- **Conditional synonym distribution** — codon probability within the observed amino-acid family
 
-**The hero interaction:** hold the sequence fixed, switch organism, and watch synonymous preferences shift while the amino acid stays put — a live visualization of codon usage bias.
+**The hero interaction:** hold the DNA sequence fixed and switch only DeCodon's organism token. The amino acid encoded by the input stays fixed by construction; the model's amino-acid confidence and conditional synonymous preference can both change. Codoscope shows both, including weak-organism calibration.
 
 ### Scope and scientific claim
 
-The position view decomposes actual DeCodon output probabilities. The vertical layer view uses independently measured linear-probe trajectories from the evidence package. It does **not** invent a per-layer synonym trajectory: the measured synonym signal crystallizes at L12, so organism comparison is the honest view of that signal.
+The UI distinguishes four quantities:
 
-The current atlas is J-lens-inspired output analysis, not a claim that the fixture contains a per-position residual-to-output Jacobian.
+- `DeCodon output`: actual final-layer probabilities restricted to the 64 codons
+- `Independent probe`: global accuracy/R² trajectories, not selected-position output
+- `Logit lens`: DeCodon's nonlinear LM head applied directly to each hidden layer
+- `Jacobian lens`: residuals transported by a corpus-averaged causal Jacobian before decoding
+
+Only artifacts that pass `analysis/validate_lens.py` may use the Jacobian-lens label. Organism switching is a model-input counterfactual on a fixed E. coli prefix, not proof that changing species causes a biological outcome.
 
 ## Quick start (local dev)
 
@@ -33,7 +38,7 @@ Open http://localhost:5173/codoscope/ — the app loads real DeCodon output from
 ```bash
 npm run check       # lint, unit tests, production build
 npm run test:e2e    # Playwright browser tests (install Chromium first)
-python -m unittest discover -s backend -p "test_*.py"
+.venv/bin/python -m unittest discover -s backend -p "test_*.py"
 ```
 
 ## Build & deploy
@@ -42,19 +47,37 @@ python -m unittest discover -s backend -p "test_*.py"
 npm run build    # outputs to dist/
 ```
 
-GitHub Pages deploys automatically on push to `main` via `.github/workflows/deploy.yml`.
+GitHub Pages deploys automatically from `main` and the current showcase branch via `.github/workflows/deploy.yml`.
 The workflow validates the frontend, builds it with the correct `/codoscope/` base path, enables Pages when permissions allow, and uploads `dist/`.
+
+## Reproduce the Jacobian lens
+
+The public model and official lens code are pinned to immutable commits and
+verified in `analysis/model_manifest.json`. Model weights and fitted matrices
+are intentionally not committed.
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m analysis.bootstrap
+HF_HOME=.hf-cache .venv/bin/python -m analysis.download_model
+.venv/bin/python -m analysis.build_corpus --count 120
+HF_HOME=.hf-cache .venv/bin/python -m analysis.jacobian_smoke
+HF_HOME=.hf-cache .venv/bin/python -m analysis.fit_lens --max-prompts 100
+HF_HOME=.hf-cache .venv/bin/python -m analysis.validate_lens
+HF_HOME=.hf-cache .venv/bin/python -m analysis.export_jacobian_lens
+```
+
+See [`analysis/README.md`](analysis/README.md) for estimator, indexing,
+held-out gates, and artifact details. DeCodon must run on Transformers 4.44.2;
+newer Transformers produced non-finite activations despite finite weights.
 
 ## Tier 1 — live inference backend
 
 ```bash
-# Download or extract the model to ./decodon_model
-export DECODON_MODEL_DIR="$PWD/decodon_model"
-
-# Python backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r backend/requirements.txt
-uvicorn backend.main:app --host 0.0.0.0 --port 8000
+python3.12 -m venv .venv
+.venv/bin/pip install -r backend/requirements.txt
+DOWNLOAD_MODEL=1 DECODON_MODEL_DIR="$PWD/decodon_model" \
+  .venv/bin/python -m backend.start
 ```
 
 Set `VITE_API_URL=http://localhost:8000` when building the frontend for live mode.
@@ -62,14 +85,18 @@ Set `VITE_API_URL=http://localhost:8000` when building the frontend for live mod
 The API exposes:
 
 - `GET /api/health` — service/model readiness
+- `GET /api/capabilities` — final-output and optional lens availability
 - `GET /api/organisms?query=coli` — supported model taxids with NCBI names
 - `POST /api/atlas` — validated CDS + up to five taxids → frozen atlas contract
 - `GET /api/docs` — OpenAPI documentation
 
 ### Container deployment
 
-`backend/Dockerfile` runs a single CPU model worker and downloads
-`goodarzilab/decodon-200M` into a persistent model directory on first boot.
+`backend/Dockerfile` runs a single CPU model worker and downloads an immutable
+DeCodon revision into a persistent model directory on first boot. Startup
+requires all model/custom-code files, verifies the 632 MB weight checksum, and
+writes an atomic completion marker. The CPU xFormers import shim fails loudly
+if flash attention is accidentally enabled.
 `render.yaml` is a Render Blueprint with a 2 GB persistent disk and a
 standard-memory instance; applying it may create billable infrastructure.
 
@@ -83,6 +110,8 @@ Backend environment variables:
 - `CORS_ORIGINS` — comma-separated allowed frontend origins
 - `PRELOAD_MODEL=1` — load DeCodon before accepting production traffic
 - `DOWNLOAD_MODEL=1` — allow `backend.start` to download a missing model
+- `DECODON_LENS_PATH` — optional validated `jlens` artifact
+- `DECODON_LENS_VALIDATION_PATH` — required passed validation manifest
 
 ## Project structure
 
@@ -91,6 +120,7 @@ codoscope/
 ├── public/data/          # atlas_fixture.json (real DeCodon output)
 ├── src/                  # React + TypeScript frontend
 ├── adapter/              # DeCodon → JSON contract adapter
+├── analysis/             # pinned model, corpus, fit, validation, export pipeline
 ├── backend/              # FastAPI Tier 1 server
 ├── tests/                # Playwright browser tests
 ├── docs/                 # Science brief & implementation guide
@@ -114,7 +144,7 @@ Every design choice is backed by measurement on the actual model (see `evidence/
 
 - DeCodon's codon signal is **real** (+0.43 nats over fair prior), not input echo
 - Layer axis is **earned**: organism at L1, position at ~L7, amino acid at L9→L12
-- Organism-switch demo uses real per-position shifts (strongest fixture example: Arg at position 38)
+- Organism-switch demo uses real per-position shifts (strongest default comparison: displayed codon 39 / internal index 38) and shows observed-AA support in both conditions
 
 ## License
 

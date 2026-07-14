@@ -2,7 +2,7 @@ name: Deploy Codoscope to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, cursor/build-codoscope-atlas]
   workflow_dispatch:
 
 permissions:

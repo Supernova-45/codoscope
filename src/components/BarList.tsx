@@ -8,25 +8,20 @@ interface BarListProps {
 }
 
 export function BarList({ title, entries, highlightLabel }: BarListProps) {
-  const stableEntries = [...entries].sort((a, b) => a.label.localeCompare(b.label));
-  const rowHeight = 31;
+  const rankedEntries = [...entries].sort((a, b) => b.score - a.score);
 
   return (
     <div className="bar-list">
       <h4>{title}</h4>
-      <ul style={{ height: `${entries.length * rowHeight}px` }}>
-        {stableEntries.map((entry) => {
+      <ul>
+        {rankedEntries.map((entry) => {
           const width = Math.max(0, Math.min(1, entry.score)) * 100;
           const color = READOUT_COLORS[entry.kind] ?? '#888';
           const highlighted = highlightLabel === entry.label;
-          const rank = entries.findIndex((candidate) => (
-            candidate.kind === entry.kind && candidate.label === entry.label
-          ));
           return (
             <li
               key={`${entry.kind}-${entry.label}`}
               className={highlighted ? 'highlighted' : ''}
-              style={{ transform: `translateY(${rank * rowHeight}px)` }}
             >
               <span className="bar-label" style={{ color }}>
                 {entry.label}

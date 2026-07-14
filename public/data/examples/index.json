@@ -1,0 +1,60 @@
+{
+  "schema_version": "codoscope/examples-1.0",
+  "default_example": "dialect-switch",
+  "examples": [
+    {
+      "id": "dialect-switch",
+      "eyebrow": "Start here",
+      "title": "Same protein, different dialect",
+      "takeaway": "The amino acid remains Arg while the preferred synonymous codon changes sharply between organisms.",
+      "description": "At position 38, DeCodon assigns different codon preferences to the same fixed E. coli sequence when only the organism token changes.",
+      "data_path": "data/atlas_fixture.json",
+      "method": "output",
+      "source_label": "E. coli K-12 CDS fixture",
+      "source_accession": "NC_000913.3 source genome",
+      "model_revision": "5c5c3da137dec756245b4cf65b8ff5bfd285d8f4",
+      "recommendation": {
+        "primary_organism": "E. coli (562)",
+        "compare_organism": "B. subtilis (1423)",
+        "position": 38,
+        "layer": 12
+      }
+    },
+    {
+      "id": "signal-calibration",
+      "eyebrow": "Honest calibration",
+      "title": "Strong and weak organism signals",
+      "takeaway": "E. coli produces sharp preferences; B. subtilis is often much flatter.",
+      "description": "The model learned some organisms better than others. Compare the entropy and bar shapes instead of hiding that heterogeneity.",
+      "data_path": "data/atlas_fixture.json",
+      "method": "output",
+      "source_label": "E. coli K-12 CDS fixture",
+      "source_accession": "NC_000913.3 source genome",
+      "model_revision": "5c5c3da137dec756245b4cf65b8ff5bfd285d8f4",
+      "recommendation": {
+        "primary_organism": "E. coli (562)",
+        "compare_organism": "B. subtilis (1423)",
+        "position": 14,
+        "layer": 12
+      }
+    },
+    {
+      "id": "depth-of-biology",
+      "eyebrow": "Across model depth",
+      "title": "Biology resolves at different layers",
+      "takeaway": "Organism identity is available early, positional context peaks mid-model, and amino-acid information builds late.",
+      "description": "These curves are independent linear probes measured on DeCodon hidden states. They are evidence about depth, not fabricated per-position J-lens output.",
+      "data_path": "data/atlas_fixture.json",
+      "method": "probe",
+      "source_label": "DeCodon concept sweep",
+      "source_accession": "evidence/DeCodon_concept_sweep.csv",
+      "model_revision": "5c5c3da137dec756245b4cf65b8ff5bfd285d8f4",
+      "recommendation": {
+        "primary_organism": "E. coli (562)",
+        "compare_organism": "P. aeruginosa (287)",
+        "position": 38,
+        "layer": 7
+      }
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": "codoscope/model-manifest-1.0",
+  "model_repo": "goodarzilab/decodon-200M",
+  "model_revision": "5c5c3da137dec756245b4cf65b8ff5bfd285d8f4",
+  "jlens_revision": "581d398613e5602a5af361e1c34d3a92ea82ba8e",
+  "runtime_required": {
+    "transformers": "4.44.2",
+    "torch": "2.13.0",
+    "reason": "Newer Transformers produced non-finite DeCodon activations."
+  },
+  "generated_at": "2026-07-14T17:48:17.646295+00:00",
+  "files": {
+    "config.json": {
+      "bytes": 1204,
+      "sha256": "6f47984b04caee39221aba2d6254e1f881ff366fd9e854aa658586eaa285f570"
+    },
+    "configuration_decodon.py": {
+      "bytes": 3664,
+      "sha256": "d5656593712d6f349dac5e89e3a5f23ffdb25f82b46df64b7f130c335dfa75ec"
+    },
+    "model.safetensors": {
+      "bytes": 631984656,
+      "sha256": "54744307bb9215d44a912f5a571ba8b36954c0685849331575d69e6387d7ebd2"
+    },
+    "modeling_decodon.py": {
+      "bytes": 59449,
+      "sha256": "c14bb611b47972ceb87358743fb0d0dac391c952b7b86ec0d89797ef6a1019be"
+    },
+    "tokenization_decodon.py": {
+      "bytes": 12659,
+      "sha256": "120dc394e96b1e62b1ad5d9caaab8f2f14bb3678dd6785dffce8363470d2e241"
+    },
+    "tokenizer_config.json": {
+      "bytes": 1234,
+      "sha256": "4f117a351edf5342aca8d64f310b5c8f3df7c9f281f03db36b0758a35c6614f5"
+    },
+    "vocab.json": {
+      "bytes": 29679,
+      "sha256": "22142374ae87815ca5d5515581307f5d9eddecf368ff41e4bed32681ca0e5687"
+    }
+  }
+}

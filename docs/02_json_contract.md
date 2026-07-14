@@ -37,10 +37,10 @@ One entry per position, **same length and order as `tokens`**:
   "pos": 37,
   "predicted_aa": "Ala",            // model's argmax amino acid at this position (optional)
   "true_aa": "Ala", "true_codon": "GCG",
-  "aa_readout": [                    // AMINO-ACID-MEAN component: which AA the model expects next
+  "aa_readout": [                    // amino-acid probability marginal
       {"label": "Ala", "kind": "aa_mean", "score": 0.71},
       {"label": "Gly", "kind": "aa_mean", "score": 0.11}, ...],
-  "synonym_readout": [              // SYNONYMOUS-RESIDUAL component, conditioned on the TRUE aa family
+  "synonym_readout": [              // codon probability conditioned on the OBSERVED aa family
       {"label": "GCG", "kind": "codon", "score": 0.6561},
       {"label": "GCC", "kind": "codon", "score": 0.1287}, ...],
   "aa_confidence": 0.66,           // mass the model puts on the correct amino acid (0..1)
@@ -48,7 +48,7 @@ One entry per position, **same length and order as `tokens`**:
 }
 ```
 
-**The two-part readout is the whole point of using a codon model** (see `docs/01_concept.md`): every position decomposes into *what protein* (`aa_readout`, the amino-acid-mean direction — high signal, coding-driven) and *whose dialect* (`synonym_readout`, the synonymous-residual direction — the organism-specific part that moves when you switch the taxid).
+**The two-part readout is the whole point of using a codon model** (see `docs/01_concept.md`): `aa_readout` is the codon-softmax probability mass marginalized by amino-acid family; `synonym_readout` is the within-observed-family conditional distribution. These are probabilities, not vector directions or subtraction residuals. The observed amino acid encoded by the fixed input stays constant; the model's predicted amino-acid distribution may change with taxid.
 
 ### The `label` + `kind` rule (do not violate)
 
@@ -56,8 +56,8 @@ Every readout entry is an object with **both** `label` and `kind` — never a ba
 
 | `kind` | meaning | source |
 |---|---|---|
-| `aa_mean` | amino-acid-mean direction (what AA) | DeCodon logits, marginalized over synonyms |
-| `codon` | synonymous-residual (which codon within the AA) | DeCodon logits, conditioned on true AA |
+| `aa_mean` | amino-acid probability marginal (legacy enum name) | codon-only DeCodon softmax, marginalized over synonyms |
+| `codon` | conditional synonymous-codon probability | codon-only DeCodon softmax, conditioned on observed AA |
 | `derived` | any computed scalar track (GC3, entropy) | adapter post-processing |
 | `sae` | sparse-autoencoder feature (optional Tier-2 panel) | a trained SAE, if you add one |
 | `phenotype` | a named functional head (optional) | NVIDIA -TE- checkpoints, if used |
@@ -81,6 +81,52 @@ This is the measured depth-of-concept data from `evidence/DeCodon_concept_sweep.
 ```
 
 The frontend uses this to draw the vertical "which biology resolves at which depth" story (organism at the bottom, position in the middle, amino acid at the top). See `docs/03_implementation.md` §Layer-axis.
+
+### `lens` — optional measured layer×position readout (v1.1)
+
+Documents with measured intermediate readouts may include a `lens` object:
+
+```jsonc
+"lens": {
+  "method": "logit_lens" | "jacobian_lens",
+  "status": "baseline" | "validated" | "development",
+  "layers": [0, 1, ..., 12],
+  "top_k": 8,
+  "model_revision": "<immutable commit>",
+  "lens_revision": "<immutable jlens commit>",
+  "score_units": "probability",
+  "normalization": "softmax restricted to the 64 codon output tokens",
+  "source_position": "same autoregressive prediction position",
+  "target_positions": "current only, or averaged current-and-future",
+  "fit": {
+    "corpus_manifest": "analysis/corpus_manifest.json",
+    "n_sequences": 100,
+    "skip_first": 3
+  },
+  "per_organism": {
+    "<label>": [
+      {
+        "pos": 0,
+        "layers": [
+          {
+            "layer": 1,
+            "pos": 0,
+            "aa_readout": [{"label":"Met","kind":"aa_mean","score":0.9,"rank":1}],
+            "codon_readout": [{"label":"ATG","kind":"codon","score":0.8,"rank":1}]
+          }
+        ]
+      }
+    ]
+  },
+  "rank_tracks": {
+    "<label>": {
+      "ATG": [[1, 1, 1] /* layers for position 0 */, ...]
+    }
+  }
+}
+```
+
+`logit_lens` means DeCodon's nonlinear LM head was applied directly to each hidden layer; it is a baseline, not Jacobian transport. `jacobian_lens` is allowed only when the residual was transported with a fitted averaged Jacobian and the held-out gates in `analysis/validate_lens.py` passed. Scores are codon-restricted probabilities; ranks are over all 64 codons. `rank_tracks` keeps pinning interactive without shipping all 64 probability objects in every cell.
 
 ## Versioning
 

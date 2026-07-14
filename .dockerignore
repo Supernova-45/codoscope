@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+.hf-cache
+node_modules
+dist
+coverage
+playwright-report
+test-results
+decodon_model
+decodon200m_model.tar.gz
+analysis/artifacts
+*.canvas.tsx
+*.png
+*.tsbuildinfo
+.env*

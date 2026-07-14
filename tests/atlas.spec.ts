@@ -5,9 +5,9 @@ test('loads the real fixture and exposes the organism comparison story', async (
 
   await expect(page.getByRole('heading', { name: 'Codoscope' })).toBeVisible();
   await expect(page.getByText('60 codons · ecoli_demo_gene')).toBeVisible();
-  await expect(page.getByText(/positions change their top synonymous codon/)).toBeVisible();
-  await expect(page.getByRole('heading', { name: /Position \d+ readout/ })).toBeVisible();
-  await expect(page.getByText('Layer axis — depth of concept')).toBeVisible();
+  await expect(page.getByText(/codons change their top synonym/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Codon \d+ readout/ })).toBeVisible();
+  await expect(page.getByText('Independent probe evidence')).toBeVisible();
 });
 
 test('keeps comparison organisms distinct when the primary organism changes', async ({ page }) => {
@@ -24,6 +24,41 @@ test('keeps comparison organisms distinct when the primary organism changes', as
 test('explains why position zero is excluded from synonym analysis', async ({ page }) => {
   await page.goto('.');
 
-  await page.getByRole('button', { name: /Position 0:/ }).click();
+  await page.getByRole('button', { name: /Codon 1, model position 0:/ }).click();
   await expect(page.getByText(/no upstream codon context/)).toBeVisible();
+});
+
+test('loads a guided example and writes shareable atlas state to the URL', async ({ page }) => {
+  await page.goto('.');
+
+  const card = page.getByRole('article').filter({ hasText: 'Strong and weak organism signals' });
+  await card.getByRole('button', { name: 'Open this story' }).click();
+
+  await expect(page).toHaveURL(/example=signal-calibration/);
+  await expect(page).toHaveURL(/position=14/);
+  await expect(card.getByRole('button', { name: 'Currently exploring' })).toBeVisible();
+});
+
+test('pins a synonymous codon from the aligned comparison', async ({ page }) => {
+  await page.goto('.');
+
+  const firstCodon = page.locator('.comparison-codon').first();
+  const label = (await firstCodon.textContent())?.replace(/[^ACGT]/g, '');
+  await firstCodon.click();
+
+  await expect(firstCodon).toHaveAttribute('aria-pressed', 'true');
+  await expect(page).toHaveURL(new RegExp(`pins=${label}`));
+});
+
+test('moves through codons with a single roving keyboard focus', async ({ page }) => {
+  await page.goto('.');
+
+  const selected = page.locator('.codon-box[aria-pressed="true"]');
+  await expect(selected).toHaveCount(1);
+  await selected.focus();
+  await page.keyboard.press('ArrowRight');
+
+  await expect(page).toHaveURL(/position=39/);
+  await expect(page.getByRole('heading', { name: 'Codon 40 readout' })).toBeVisible();
+  await expect(page.locator('.codon-box[tabindex="0"]')).toHaveCount(1);
 });

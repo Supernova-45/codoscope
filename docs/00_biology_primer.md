@@ -20,7 +20,7 @@ Example — the amino acid Alanine (Ala) is coded by **four** synonymous codons:
 - **Which amino acid** a position codes = "what protein is being built" (biologically constrained, the model is usually confident).
 - **Which synonymous codon** within that amino acid = "the organism's dialect" (a preference, and the thing that differs between species).
 
-The model (DeCodon) was trained on real coding sequences from thousands of organisms and given the organism's identity as an input. So it learned organism-specific codon preferences. **The hero interaction — switch the organism, watch the synonymous preferences shift while the amino acid stays fixed — is a direct visualization of codon usage bias.**
+The model (DeCodon) was trained on real coding sequences from thousands of organisms and given the organism's identity as an input. So it learned organism-specific codon preferences. **The hero interaction switches that organism token while holding the DNA fixed. The amino acid encoded by the input therefore stays fixed, but DeCodon's predicted amino-acid confidence can change.** Codoscope shows that confidence beside the conditional synonymous preference, making the model counterfactual visible without treating it as a clean biological intervention.
 
 ## The genetic code table (you need this exact mapping)
 

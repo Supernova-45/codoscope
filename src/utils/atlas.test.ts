@@ -7,15 +7,16 @@ import {
 } from './atlas';
 
 function readout(pos: number, first: number): PositionReadout {
+  const synonyms = [
+    { label: 'GCT', kind: 'codon' as const, score: first },
+    { label: 'GCC', kind: 'codon' as const, score: 1 - first },
+  ].sort((a, b) => b.score - a.score);
   return {
     pos,
     true_aa: pos === 0 ? 'Met' : 'Ala',
     true_codon: pos === 0 ? 'ATG' : 'GCT',
     aa_readout: [{ label: pos === 0 ? 'Met' : 'Ala', kind: 'aa_mean', score: 1 }],
-    synonym_readout: [
-      { label: 'GCT', kind: 'codon', score: first },
-      { label: 'GCC', kind: 'codon', score: 1 - first },
-    ],
+    synonym_readout: synonyms,
     aa_confidence: 1,
     synonym_entropy: 0.5,
   };
@@ -37,6 +38,16 @@ function document(): AtlasDocument {
       'A (1)': [readout(0, 0.5), readout(1, 0.9), readout(2, 0.55)],
       'B (2)': [readout(0, 0.5), readout(1, 0.1), readout(2, 0.45)],
     },
+    concept_layers: {
+      layers: [0, 1],
+      concepts: {
+        organism_taxid: {
+          kind: 'clf',
+          baseline: 0.5,
+          scores: [0.5, 0.9],
+        },
+      },
+    },
   };
 }
 
@@ -55,6 +66,49 @@ describe('atlas contract validation', () => {
     const value = document();
     value.per_organism['B (2)'].pop();
     expect(() => validateAtlasDocument(value)).toThrow('length mismatch');
+  });
+
+  it('accepts compact measured lens readouts and rank tracks', () => {
+    const value = document();
+    const positions = value.tokens.map((token) => ({
+      pos: token.pos,
+      layers: [{
+        layer: 12,
+        pos: token.pos,
+        aa_readout: [{
+          label: token.aa3,
+          kind: 'aa_mean' as const,
+          score: 1,
+          rank: 1,
+        }],
+        codon_readout: [{
+          label: token.codon,
+          kind: 'codon' as const,
+          score: 1,
+          rank: 1,
+        }],
+      }],
+    }));
+    value.lens = {
+      method: 'logit_lens',
+      status: 'baseline',
+      layers: [12],
+      top_k: 1,
+      model_revision: 'test-revision',
+      score_units: 'probability',
+      normalization: 'codon-only softmax',
+      source_position: 'same position',
+      target_positions: 'current only',
+      per_organism: {
+        'A (1)': positions,
+        'B (2)': positions,
+      },
+      rank_tracks: {
+        'A (1)': { GCT: [[1], [1], [1]] },
+        'B (2)': { GCT: [[1], [1], [1]] },
+      },
+    };
+    expect(() => validateAtlasDocument(value)).not.toThrow();
   });
 });
 

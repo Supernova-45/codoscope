@@ -2,7 +2,7 @@
 
 ## The one-paragraph pitch
 
-Build an interactive, Neuronpedia-style website that visualizes what **DeCodon-200M** (an autoregressive codon language model) is *poised to output* at every position of a coding sequence, layer by layer — a "BioJ-space" atlas. Unlike a protein or nucleotide model, a codon model's output decomposes into two legible parts at every position: **which amino acid** it expects (the protein being written) and **which synonymous codon** it prefers (the organism's codon dialect). The signature interaction: hold the sequence fixed and **switch the organism**, and watch the synonymous preferences move — a live, causal demo that the model has learned organism-specific codon strategies.
+Build an interactive, Neuronpedia-style website that visualizes what **DeCodon-200M** (an autoregressive codon language model) is *poised to output* at every position of a coding sequence, layer by layer — a "BioJ-space" atlas. The final-output baseline separates the probability of each amino-acid family from the conditional distribution among the observed family's synonymous codons. A fitted averaged Jacobian then transports intermediate residual states into that output vocabulary. The signature interaction holds the DNA sequence fixed and switches the organism token. The encoded amino acid is invariant by construction; both of the model's predicted distributions may change, and Codoscope shows that calibration rather than hiding it.
 
 ## What "J-space" means (and the protein precedents)
 
@@ -41,6 +41,7 @@ The vertical story the layer axis should tell is therefore real and specific: *o
 ## What the codon outputs actually show (the reader's takeaway per position)
 
 At each codon position, the atlas surfaces:
-- **`aa_readout`** — the amino-acid-mean direction: which amino acid the model expects, driven by the coding constraint (high signal). "The protein being written."
-- **`synonym_readout`** — the synonymous-residual direction: which codon within that amino acid, driven by organism codon strategy (subtle signal, the DeCodon result). "The dialect it's written in."
-- **How these change when you switch the taxid** — the hero interaction. Example from the shipped fixture (Arg at one position): E. coli commits to **CGC (0.96)**; switch to B. subtilis and it shifts toward **CGT** — a real organism-specific codon-strategy difference.
+- **`aa_readout`** — probability mass over amino-acid families after restricting the model softmax to its 64 codon outputs.
+- **`synonym_readout`** — codon probability conditioned on the amino-acid family encoded by the observed input.
+- **`lens`** — when present, ranked codon/amino-acid readouts for each measured layer and position, explicitly labeled as direct logit lens or averaged Jacobian lens.
+- **How these change when you switch the taxid** — a model-input counterfactual. Codoscope always shows observed-amino-acid support alongside the conditional synonym shift because a dramatic conditional change can sit inside a low-probability amino-acid tail.

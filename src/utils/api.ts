@@ -1,8 +1,30 @@
-import type { AtlasDocument, AtlasRequest, OrganismInfo } from '../types/atlas';
+import type {
+  AtlasDocument,
+  AtlasRequest,
+  ExampleManifest,
+  OrganismInfo,
+} from '../types/atlas';
 import { validateAtlasDocument } from './atlas';
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
 const REQUEST_TIMEOUT_MS = 60_000;
+
+function errorDetail(value: unknown): string | null {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    const messages = value
+      .map((item) => (
+        typeof item === 'object'
+        && item !== null
+        && typeof (item as { msg?: unknown }).msg === 'string'
+          ? (item as { msg: string }).msg
+          : null
+      ))
+      .filter((message): message is string => Boolean(message));
+    return messages.length ? messages.join('; ') : null;
+  }
+  return null;
+}
 
 async function fetchJson(url: string, init?: RequestInit): Promise<unknown> {
   const controller = new AbortController();
@@ -10,13 +32,13 @@ async function fetchJson(url: string, init?: RequestInit): Promise<unknown> {
   try {
     const response = await fetch(url, { ...init, signal: controller.signal });
     if (!response.ok) {
-      const body = await response.json().catch(() => null) as { detail?: string } | null;
-      throw new Error(body?.detail ?? `Request failed (${response.status})`);
+      const body = await response.json().catch(() => null) as { detail?: unknown } | null;
+      throw new Error(errorDetail(body?.detail) ?? `Request failed (${response.status})`);
     }
     return await response.json();
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('The request timed out. Try a shorter sequence.');
+      throw new Error('The request timed out. Please try again.');
     }
     throw error;
   } finally {
@@ -24,10 +46,29 @@ async function fetchJson(url: string, init?: RequestInit): Promise<unknown> {
   }
 }
 
-export async function fetchFixture(): Promise<AtlasDocument> {
-  const value = await fetchJson(`${import.meta.env.BASE_URL}data/atlas_fixture.json`);
+export async function fetchAtlasDocument(path = 'data/atlas_fixture.json'): Promise<AtlasDocument> {
+  const safePath = path.replace(/^\/+/, '');
+  const value = await fetchJson(`${import.meta.env.BASE_URL}${safePath}`);
   validateAtlasDocument(value);
   return value;
+}
+
+export async function fetchFixture(): Promise<AtlasDocument> {
+  return fetchAtlasDocument();
+}
+
+export async function fetchExampleManifest(): Promise<ExampleManifest> {
+  const value = await fetchJson(`${import.meta.env.BASE_URL}data/examples/index.json`);
+  if (
+    typeof value !== 'object'
+    || value === null
+    || (value as ExampleManifest).schema_version !== 'codoscope/examples-1.0'
+    || !Array.isArray((value as ExampleManifest).examples)
+    || typeof (value as ExampleManifest).default_example !== 'string'
+  ) {
+    throw new Error('The example manifest has an invalid format');
+  }
+  return value as ExampleManifest;
 }
 
 export async function fetchAtlas(request: AtlasRequest): Promise<AtlasDocument> {

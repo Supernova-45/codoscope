@@ -13,10 +13,15 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+.hf-cache/
 
 # Model weights (too large for git)
 decodon_model/
 decodon200m_model.tar.gz
+analysis/artifacts/*.pt
+analysis/artifacts/*.ckpt
+analysis/artifacts/*.jsonl
+analysis/artifacts/*.fasta
 
 # IDE / OS
 .DS_Store

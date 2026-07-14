@@ -21,6 +21,7 @@ from pathlib import Path
 import anyio
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from jsonschema import ValidationError as JSONSchemaError
 from jsonschema import validate as validate_json
@@ -29,6 +30,10 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "adapter"))
 
 from decodon_adapter import build_document, load_decodon  # noqa: E402
+from jacobian_adapter import (  # noqa: E402
+    RuntimeJacobianLens,
+    attach_jacobian_lens,
+)
 from backend.validation import CDSValidationError, validate_cds  # noqa: E402
 
 MODEL_DIR = os.environ.get("DECODON_MODEL_DIR", str(ROOT / "decodon_model"))
@@ -37,17 +42,31 @@ CORS_ORIGINS = os.environ.get(
     "http://localhost:5173,https://supernova-45.github.io",
 ).split(",")
 PRELOAD_MODEL = os.environ.get("PRELOAD_MODEL", "0") == "1"
+LENS_PATH = os.environ.get("DECODON_LENS_PATH", "")
+LENS_VALIDATION_PATH = os.environ.get("DECODON_LENS_VALIDATION_PATH", "")
 
 # Lazy model singleton
 _model = None
 _vocab = None
+_lens = None
 _code_table = None
 _organism_cache: dict[int, str] = {}
 _model_lock = threading.Lock()
+_lens_lock = threading.Lock()
 _vocab_lock = threading.Lock()
-_inference_lock = threading.Lock()
+_inference_slot = threading.BoundedSemaphore(value=1)
 _taxonomy_lock = threading.Lock()
+_cache_lock = threading.Lock()
+_result_cache: dict[str, dict] = {}
+_result_cache_order: list[str] = []
 _schema = json.loads((ROOT / "adapter" / "schema.json").read_text())
+_required_model_files = (
+    "config.json",
+    "configuration_decodon.py",
+    "model.safetensors",
+    "modeling_decodon.py",
+    "vocab.json",
+)
 
 KNOWN_ORGANISMS = {
     287: "Pseudomonas aeruginosa",
@@ -55,6 +74,16 @@ KNOWN_ORGANISMS = {
     1423: "Bacillus subtilis",
 }
 _organism_cache.update(KNOWN_ORGANISMS)
+_taxonomy_cache_path = ROOT / "data" / "organisms.json"
+if _taxonomy_cache_path.exists():
+    _organism_cache.update({
+        int(taxid): name
+        for taxid, name in json.loads(_taxonomy_cache_path.read_text()).items()
+    })
+
+
+def _model_files_ready() -> bool:
+    return all((Path(MODEL_DIR) / name).is_file() for name in _required_model_files)
 
 
 def _get_codon_table() -> dict[str, str]:
@@ -98,7 +127,7 @@ def _get_model():
     if _model is None:
         with _model_lock:
             if _model is None:
-                if not Path(MODEL_DIR).exists():
+                if not _model_files_ready():
                     raise HTTPException(
                         status_code=503,
                         detail=(
@@ -108,6 +137,20 @@ def _get_model():
                     )
                 _model, _vocab = load_decodon(MODEL_DIR)
     return _model, _vocab
+
+
+def _get_lens() -> RuntimeJacobianLens | None:
+    global _lens
+    if not LENS_PATH or not LENS_VALIDATION_PATH:
+        return None
+    if _lens is None:
+        with _lens_lock:
+            if _lens is None:
+                _lens = RuntimeJacobianLens(
+                    LENS_PATH,
+                    LENS_VALIDATION_PATH,
+                )
+    return _lens
 
 
 def _get_vocab() -> dict[str, int]:
@@ -181,6 +224,8 @@ class AtlasRequest(BaseModel):
 async def lifespan(_app: FastAPI):
     if PRELOAD_MODEL and Path(MODEL_DIR).exists():
         await anyio.to_thread.run_sync(_get_model)
+        if LENS_PATH:
+            await anyio.to_thread.run_sync(_get_lens)
     yield
 
 
@@ -203,11 +248,25 @@ app.add_middleware(
 
 @app.get("/api/health")
 def health():
-    model_ready = Path(MODEL_DIR).exists()
-    return {
+    model_ready = _model_files_ready()
+    payload = {
         "status": "ok" if model_ready else "degraded",
         "model_ready": model_ready,
         "model_loaded": _model is not None,
+        "lens_configured": bool(LENS_PATH and LENS_VALIDATION_PATH),
+        "lens_loaded": _lens is not None,
+    }
+    return JSONResponse(payload, status_code=200 if model_ready else 503)
+
+
+@app.get("/api/capabilities")
+def capabilities():
+    return {
+        "final_output": True,
+        "jacobian_lens": bool(LENS_PATH and LENS_VALIDATION_PATH),
+        "static_fallback": True,
+        "translation_table": 1,
+        "start_codon_filter": "ATG",
     }
 
 
@@ -227,11 +286,10 @@ def list_organisms(
             if normalized_query in str(taxid)
         ][:limit]
     elif normalized_query:
-        names = _resolve_taxid_names(taxids)
         candidates = [
             taxid for taxid in taxids
             if (
-                normalized_query in names[taxid].lower()
+                normalized_query in _organism_cache.get(taxid, "").lower()
                 or normalized_query in str(taxid)
             )
         ][:limit]
@@ -259,11 +317,27 @@ def create_atlas(req: AtlasRequest):
         for taxid in unique_taxids
     }
 
+    sequence_id = f"user_{hashlib.sha256(validated.sequence.encode()).hexdigest()[:12]}"
+    cache_key = hashlib.sha256(
+        (
+            f"{validated.sequence}|{','.join(map(str, unique_taxids))}"
+            f"|lens={Path(LENS_PATH).name if LENS_PATH else 'none'}"
+        ).encode()
+    ).hexdigest()
+    with _cache_lock:
+        cached = _result_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     model, vocab = _get_model()
     code = _get_codon_table()
-    sequence_id = f"user_{hashlib.sha256(validated.sequence.encode()).hexdigest()[:12]}"
-
-    with _inference_lock:
+    if not _inference_slot.acquire(blocking=False):
+        raise HTTPException(
+            status_code=429,
+            detail="The model is processing another sequence. Please retry shortly.",
+            headers={"Retry-After": "2"},
+        )
+    try:
         doc = build_document(
             model,
             vocab,
@@ -272,6 +346,19 @@ def create_atlas(req: AtlasRequest):
             codon_list=list(validated.codons),
             organisms=organisms,
         )
+        runtime_lens = _get_lens()
+        if runtime_lens is not None:
+            doc = attach_jacobian_lens(
+                doc,
+                model,
+                vocab,
+                code,
+                list(validated.codons),
+                organisms,
+                runtime_lens,
+            )
+    finally:
+        _inference_slot.release()
 
     concept_path = ROOT / "data" / "concept_layers.json"
     if concept_path.exists():
@@ -284,5 +371,12 @@ def create_atlas(req: AtlasRequest):
             status_code=500,
             detail=f"Generated atlas failed schema validation: {error.message}",
         ) from error
+
+    with _cache_lock:
+        _result_cache[cache_key] = doc
+        _result_cache_order.append(cache_key)
+        while len(_result_cache_order) > 32:
+            oldest = _result_cache_order.pop(0)
+            _result_cache.pop(oldest, None)
 
     return doc
