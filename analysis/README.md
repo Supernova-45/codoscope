@@ -71,3 +71,8 @@ The exporter refuses to emit `method: "jacobian_lens"` unless
 finite held-out metrics and better codon NLL than the direct logit lens on at
 least one third of fitted layers. The causal smoke test separately verifies
 that future residual positions have zero effect on earlier targets.
+
+The committed run passed: all metrics were finite and Jacobian-lens NLL beat
+the direct logit-lens control at source blocks 3–10 (8 of 11 blocks), versus a
+four-block requirement. Validation used ten corpus records excluded from the
+first 100 fitting records, with twelve codon positions per record.

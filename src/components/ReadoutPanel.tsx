@@ -62,6 +62,12 @@ export function ReadoutPanel() {
             entries={readout.aa_readout}
             highlightLabel={readout.true_aa}
           />
+          <p className="displayed-mass">
+            Top five shown · {(readout.aa_readout.reduce(
+              (sum, entry) => sum + entry.score,
+              0,
+            ) * 100).toFixed(1)}% of codon probability mass
+          </p>
           <div className="confidence-chip">
             <span>Observed {token.aa3} probability</span>
             <strong>{(readout.aa_confidence * 100).toFixed(1)}%</strong>

@@ -53,7 +53,11 @@ export function GuidedTour() {
       number: '3',
       title: 'Follow model depth',
       detail: 'Compare early organism information with mid-layer context and late amino-acid resolution.',
-      target: 'layer-evidence',
+      target: (
+        example.method === 'jacobian_lens' || example.method === 'logit_lens'
+          ? 'layer-position-atlas'
+          : 'layer-evidence'
+      ),
       action: () => setSelectedLayer(example.recommendation.layer ?? 7),
     },
   ];

@@ -55,6 +55,42 @@
         "position": 38,
         "layer": 7
       }
+    },
+    {
+      "id": "logit-lens-baseline",
+      "eyebrow": "Method comparison",
+      "title": "Decode every hidden layer directly",
+      "takeaway": "The direct logit lens is a useful baseline, but it assumes hidden layers already use the final output coordinates.",
+      "description": "DeCodon's nonlinear LM head is applied to each measured hidden state without Jacobian transport. Compare this grid with the fitted J-lens example.",
+      "data_path": "data/examples/ecoli_logit_lens.json",
+      "method": "logit_lens",
+      "source_label": "E. coli K-12 CDS fixture",
+      "source_accession": "NC_000913.3 source genome",
+      "model_revision": "5c5c3da137dec756245b4cf65b8ff5bfd285d8f4",
+      "recommendation": {
+        "primary_organism": "E. coli (562)",
+        "compare_organism": "B. subtilis (1423)",
+        "position": 38,
+        "layer": 7
+      }
+    },
+    {
+      "id": "jacobian-workspace",
+      "eyebrow": "The biological J-space",
+      "title": "Transport hidden states into codon space",
+      "takeaway": "From middle layers onward, the averaged Jacobian gives lower held-out codon NLL than decoding hidden states directly.",
+      "description": "A DeCodon-specific implementation of Anthropic's future-position averaged Jacobian, fitted on 100 balanced RefSeq CDS and gated on held-out genes.",
+      "data_path": "data/examples/ecoli_jacobian_lens.json",
+      "method": "jacobian_lens",
+      "source_label": "E. coli K-12 CDS fixture · 100-sequence lens",
+      "source_accession": "NC_000913.3 source genome",
+      "model_revision": "5c5c3da137dec756245b4cf65b8ff5bfd285d8f4",
+      "recommendation": {
+        "primary_organism": "E. coli (562)",
+        "compare_organism": "B. subtilis (1423)",
+        "position": 38,
+        "layer": 8
+      }
     }
   ]
 }

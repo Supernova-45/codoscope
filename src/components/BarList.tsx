@@ -72,7 +72,6 @@ export function EntropyGauge({ value, label }: EntropyGaugeProps) {
         <div className="gauge-fill" style={{ width: `${value * 100}%` }} />
       </div>
       <span className="gauge-value">{value.toFixed(2)}</span>
-      <span className="gauge-hint">{value < 0.2 ? 'committed' : value > 0.7 ? 'flat' : 'mixed'}</span>
     </div>
   );
 }

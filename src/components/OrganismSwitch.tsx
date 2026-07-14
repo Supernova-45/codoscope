@@ -34,6 +34,16 @@ export function OrganismSwitch() {
     : null;
   const primaryTop = primaryStory?.synonym_readout[0];
   const comparisonTop = comparisonStory?.synonym_readout[0];
+  const calibration = (organism: string) => {
+    const values = document.per_organism[organism]?.slice(1) ?? [];
+    if (!values.length) return null;
+    return {
+      support: values.reduce((sum, item) => sum + item.aa_confidence, 0) / values.length,
+      entropy: values.reduce((sum, item) => sum + item.synonym_entropy, 0) / values.length,
+    };
+  };
+  const primaryCalibration = calibration(selectedOrganism);
+  const comparisonCalibration = comparison ? calibration(comparison) : null;
 
   return (
     <section className="panel organism-panel hero" id="organism-story">
@@ -111,6 +121,28 @@ export function OrganismSwitch() {
               {(Number(comparisonStory?.aa_confidence ?? 0) * 100).toFixed(0)}%. →
             </span>
           </button>
+        )}
+        {compareMode && comparison && primaryCalibration && comparisonCalibration && (
+          <div className="organism-calibration">
+            <span className="calibration-label">On this fixed sequence</span>
+            {[
+              [selectedOrganism, primaryCalibration],
+              [comparison, comparisonCalibration],
+            ].map(([label, values]) => {
+              const result = values as { support: number; entropy: number };
+              return (
+                <div key={String(label)}>
+                  <strong>{String(label).split(' (')[0]}</strong>
+                  <span>mean observed-AA support {(result.support * 100).toFixed(0)}%</span>
+                  <span>mean synonym entropy {result.entropy.toFixed(2)}</span>
+                </div>
+              );
+            })}
+            <p>
+              A flatter organism can reflect weaker model competence, not
+              biological indifference.
+            </p>
+          </div>
         )}
       </div>
     </section>

@@ -1,0 +1,40 @@
+{
+  "schema_version": "codoscope/lens-fit-1.0",
+  "status": "fitted",
+  "generated_at": "2026-07-14T18:19:47.795540+00:00",
+  "method": "averaged_future_position_jacobian",
+  "model_repo": "goodarzilab/decodon-200M",
+  "model_revision": "5c5c3da137dec756245b4cf65b8ff5bfd285d8f4",
+  "jlens_revision": "581d398613e5602a5af361e1c34d3a92ea82ba8e",
+  "n_prompts": 100,
+  "source_layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "target_layer": 11,
+  "d_model": 1024,
+  "dim_batch": 8,
+  "max_seq_len": 128,
+  "skip_first": 3,
+  "runtime": {
+    "python": "3.12.13",
+    "torch": "2.13.0",
+    "transformers": "4.44.2",
+    "layer_norm": "native DeCodon modules with configured eps=1e-12"
+  },
+  "split": {
+    "fitting_records": "first 100 records",
+    "held_out_records": "remaining corpus records"
+  },
+  "corpus_manifest": "analysis/corpus_manifest.json",
+  "artifact": "analysis/artifacts/decodon_jlens.pt"
+}

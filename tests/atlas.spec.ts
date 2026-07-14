@@ -62,3 +62,30 @@ test('moves through codons with a single roving keyboard focus', async ({ page }
   await expect(page.getByRole('heading', { name: 'Codon 40 readout' })).toBeVisible();
   await expect(page.locator('.codon-box[tabindex="0"]')).toHaveCount(1);
 });
+
+test('opens the measured layer-by-position logit-lens baseline', async ({ page }) => {
+  await page.goto('.');
+
+  const card = page.getByRole('article').filter({ hasText: 'Decode every hidden layer directly' });
+  await card.getByRole('button', { name: 'Open this story' }).click();
+
+  await expect(page.getByRole('heading', {
+    name: 'What each hidden state is poised to output',
+  })).toBeVisible();
+  await expect(page.getByText('Nonlinear LM head applied directly')).toBeVisible();
+  await expect(page.locator('.lens-cell')).toHaveCount(13 * 60);
+});
+
+test('opens the validated Jacobian lens and tracks a pinned codon rank', async ({ page }) => {
+  await page.goto('.');
+
+  const card = page.getByRole('article').filter({ hasText: 'Transport hidden states into codon space' });
+  await card.getByRole('button', { name: 'Open this story' }).click();
+
+  await expect(page.getByText('100 fitting sequences')).toBeVisible();
+  await expect(page.locator('.lens-cell')).toHaveCount(12 * 60);
+  const codon = page.locator('.comparison-codon').first();
+  const label = (await codon.textContent())?.replace(/[^ACGT]/g, '');
+  await codon.click();
+  await expect(page.getByRole('heading', { name: `${label} across the atlas` })).toBeVisible();
+});

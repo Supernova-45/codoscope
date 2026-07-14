@@ -48,7 +48,11 @@ export function LayerPositionAtlas() {
   };
 
   return (
-    <section className="panel layer-position-panel" aria-labelledby="layer-position-title">
+    <section
+      className="panel layer-position-panel"
+      id="layer-position-atlas"
+      aria-labelledby="layer-position-title"
+    >
       <div className="panel-header">
         <div>
           <span className="panel-step">Measured layer × position readout</span>

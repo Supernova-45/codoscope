@@ -71,6 +71,13 @@ See [`analysis/README.md`](analysis/README.md) for estimator, indexing,
 held-out gates, and artifact details. DeCodon must run on Transformers 4.44.2;
 newer Transformers produced non-finite activations despite finite weights.
 
+The checked-in validation manifest records a passing fit:
+
+- 100 balanced RefSeq CDS for fitting; 10 separate CDS × 12 positions for the gate
+- finite Jacobian metrics and exactly zero future-to-past gradient in the causal smoke test
+- lower codon NLL than the direct logit-lens control at decoder blocks 3–10 (8/11 fitted source layers)
+- exact model revision, official `jlens` revision, runtime versions, file checksums, corpus filters, and seed recorded
+
 ## Tier 1 — live inference backend
 
 ```bash
